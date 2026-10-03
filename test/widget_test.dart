@@ -1,0 +1,64 @@
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/material.dart';
+import 'package:pocket_party/main.dart';
+import 'package:pocket_party/online/online_session.dart';
+
+import '../server/room_server.dart';
+
+void main() {
+  testWidgets('A player can launch a local match', (tester) async {
+    await tester.pumpWidget(const PartyApp());
+    expect(find.text('Pocket Party'), findsOneWidget);
+    await tester.ensureVisible(find.text('Start game'));
+    await tester.tap(find.text('Start game'));
+    await tester.pumpAndSettle();
+    expect(find.text('Player 1’s turn'), findsOneWidget);
+    final semantics = tester.ensureSemantics();
+    await tester.tap(find.bySemanticsLabel('Horizontal line 1, 1'));
+    await tester.pump();
+    expect(find.text('Player 2’s turn'), findsOneWidget);
+    semantics.dispose();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Waiting board accepts a move after another player joins', (
+    tester,
+  ) async {
+    HttpOverrides.global = null;
+    final server = RoomServer();
+    late OnlineSession host;
+    late OnlineSession guest;
+    await tester.runAsync(() async {
+      final http = await server.start(port: 0);
+      final base = 'http://127.0.0.1:${http.port}';
+      host = await OnlineSession.open(base, players: 2);
+    });
+    await tester.pumpWidget(
+      MaterialApp(home: MatchPage(players: 2, bot: false, online: host)),
+    );
+    expect(find.text('Waiting for players (1/2)'), findsOneWidget);
+    await tester.runAsync(() async {
+      guest = await OnlineSession.open(host.baseUrl, code: host.code);
+      await host.refresh();
+    });
+    await tester.pump();
+    expect(find.text('Your turn'), findsOneWidget);
+    expect(host.canMove, isTrue);
+    final semantics = tester.ensureSemantics();
+    await tester.runAsync(() async {
+      await tester.tap(find.bySemanticsLabel('Horizontal line 1, 1'));
+      expect(host.busy, isTrue, reason: 'Touch must submit the move');
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      await guest.refresh();
+    });
+    expect(host.error, isNull);
+    expect(server.rooms[host.code]!.game.edges, contains('h:0:0'));
+    expect(guest.game.edges, contains('h:0:0'));
+    semantics.dispose();
+    await tester.pumpWidget(const SizedBox());
+    guest.dispose();
+    await tester.runAsync(server.close);
+  });
+}
