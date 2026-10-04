@@ -113,6 +113,7 @@ class RoomServer {
           jsonEncode({
             'status': 'ok',
             'games': ['dots', 'chess'],
+            'dotsBoardSize': 7,
           }),
         );
         return;

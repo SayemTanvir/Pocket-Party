@@ -117,7 +117,8 @@ void main() {
           await session.refresh();
         }
         expect(sessions.every((s) => s.game.finished), isTrue);
-        expect(host.game.scores.reduce((a, b) => a + b), 9);
+        expect(host.game.size, 7);
+        expect(host.game.scores.reduce((a, b) => a + b), 36);
         expect(sessions.last.game.toJson(), host.game.toJson());
         await host.restart();
         await sessions.last.refresh();

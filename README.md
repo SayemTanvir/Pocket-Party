@@ -4,7 +4,7 @@ A cross-platform Flutter collection of small multiplayer games.
 
 Two playable games:
 
-- Dots and Boxes: local 2–4 players, a tactical two-player bot, and private online rooms.
+- Dots and Boxes: a 7 × 7 dot board with 36 boxes and 84 lines, local 2–4 players, a tactical two-player bot, and private online rooms. Capturing boxes keeps your turn, allowing long chains and late swings in the score.
 - Chess: local two-player matches, a beginner bot, and private online rooms. Includes legal move highlights, castling, en passant, promotion, checkmate, draws, move history, and board flipping.
 
 See [GETTING_STARTED.md](GETTING_STARTED.md) for run commands, code explanations, and Android setup.

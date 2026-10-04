@@ -1,7 +1,7 @@
 import 'party_game.dart';
 
 class DotsGame implements PartyGame {
-  DotsGame({this.size = 4, this.players = 2})
+  DotsGame({this.size = 7, this.players = 2})
     : scores = List.filled(players, 0);
 
   final int size;

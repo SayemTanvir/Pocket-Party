@@ -87,7 +87,7 @@ class _LobbyState extends State<Lobby> {
                         ),
                         const SizedBox(height: 12),
                         const Text(
-                          'Connect dots. Claim boxes. Complete a box to take another turn.',
+                          '36 boxes to battle for. Complete a box to take another turn and turn a chain into a comeback.',
                         ),
                         const SizedBox(height: 24),
                         SegmentedButton<int>(
@@ -312,7 +312,7 @@ class _MatchPageState extends State<MatchPage> {
     body: SafeArea(
       child: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(16),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 500),
             child: Column(
@@ -371,6 +371,11 @@ class _MatchPageState extends State<MatchPage> {
                 ],
                 const SizedBox(height: 24),
                 Text(status, style: Theme.of(context).textTheme.headlineSmall),
+                const SizedBox(height: 8),
+                Text(
+                  '${(game.size - 1) * (game.size - 1) - game.boxes.length} boxes left · ${game.size} × ${game.size} dots',
+                  style: const TextStyle(color: Colors.white70),
+                ),
                 const SizedBox(height: 24),
                 AspectRatio(
                   aspectRatio: 1,
