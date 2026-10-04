@@ -27,12 +27,22 @@ Future<void> main(List<String> args) async {
   }
 
   try {
-    final host = await post('/rooms', {'players': 2, 'gameType': 'chess'});
+    final host = await post('/rooms', {
+      'players': 2,
+      'gameType': 'chess',
+      'clockSeconds': 60,
+    });
     if (host['gameType'] != 'chess') {
       throw StateError('Server has not deployed chess yet');
     }
+    if (host['clock'] == null || host['clock']['running'] != false) {
+      throw StateError('Clock must wait for the guest');
+    }
     final code = host['code'];
     final guest = await post('/rooms/$code/join', {});
+    if (guest['clock']['running'] != true) {
+      throw StateError('Clock did not start on join');
+    }
     final tokens = [host['token'] as String, guest['token'] as String];
     var snapshot = guest;
     var index = 0;
@@ -45,6 +55,9 @@ Future<void> main(List<String> args) async {
     final game = ChessGame.fromJson(snapshot['game'] as Map<String, dynamic>);
     if (!game.finished || game.result != 'Black wins by checkmate!') {
       throw StateError('Checkmate was not recorded');
+    }
+    if (jsonEncode(snapshot['series']['wins']) != '[0,1]') {
+      throw StateError('Result not counted');
     }
     for (final token in tokens) {
       final request = await client.getUrl(Uri.parse('$base/rooms/$code'));
@@ -63,8 +76,13 @@ Future<void> main(List<String> args) async {
     if ((rematch['game']['moves'] as List).isNotEmpty) {
       throw StateError('Rematch did not reset');
     }
+    if (jsonEncode(rematch['series']) != jsonEncode(snapshot['series']) ||
+        rematch['round'] != 2 ||
+        rematch['clock']['seconds'] != 60) {
+      throw StateError('Rematch lost its record or clock');
+    }
     stdout.writeln(
-      'Chess verified: two seats, four legal moves, checkmate, synchronized boards and rematch.',
+      'Chess verified: join starts clock, legal moves, checkmate, synchronized boards, series record and timed rematch.',
     );
   } finally {
     client.close(force: true);

@@ -10,6 +10,10 @@ import '../lib/games/dots_game.dart';
 import '../lib/games/chess_game.dart';
 // ignore: avoid_relative_lib_imports
 import '../lib/games/party_game.dart';
+// ignore: avoid_relative_lib_imports
+import '../lib/games/chess_clock.dart';
+// ignore: avoid_relative_lib_imports
+import '../lib/games/match_series.dart';
 
 class ApiError implements Exception {
   ApiError(this.status, this.message);
@@ -18,25 +22,56 @@ class ApiError implements Exception {
 }
 
 class Room {
-  Room(this.code, int players, {this.gameType = 'dots'})
-    : state = gameType == 'chess' ? ChessGame() : DotsGame(players: players);
-  final String code;
-  final String gameType;
+  Room(this.code, int players, {this.gameType = 'dots', this.clockSeconds = 0})
+    : state = gameType == 'chess' ? ChessGame() : DotsGame(players: players),
+      series = MatchSeries(players),
+      clock = clockSeconds == 0 ? null : ChessClock(clockSeconds);
+  final String code, gameType;
+  final int clockSeconds;
   PartyGame state;
+  final MatchSeries series;
+  ChessClock? clock;
+  bool recorded = false;
+  int round = 1;
   DotsGame get game => state as DotsGame;
   final List<String> tokens = [];
   int revision = 0;
   DateTime touched = DateTime.now();
   bool get ready => tokens.length == state.players;
-  Map<String, dynamic> snapshot(int player) => {
-    'code': code,
-    'player': player,
-    'joined': tokens.length,
-    'ready': ready,
-    'revision': revision,
-    'gameType': gameType,
-    'game': state.toJson(),
-  };
+  void update() {
+    final wasFinished = state.finished;
+    if (state is ChessGame) clock?.settle(state as ChessGame);
+    if (!wasFinished && state.finished) revision++;
+    if (state.finished && !recorded) {
+      series.record(state);
+      recorded = true;
+    }
+  }
+
+  void restart() {
+    state = gameType == 'chess'
+        ? ChessGame()
+        : DotsGame(players: state.players);
+    clock = clockSeconds == 0 ? null : (ChessClock(clockSeconds)..start());
+    round++;
+    recorded = false;
+  }
+
+  Map<String, dynamic> snapshot(int player) {
+    update();
+    return {
+      'code': code,
+      'player': player,
+      'joined': tokens.length,
+      'ready': ready,
+      'revision': revision,
+      'gameType': gameType,
+      'game': state.toJson(),
+      'clock': clock?.toJson(),
+      'series': series.toJson(),
+      'round': round,
+    };
+  }
 }
 
 class RoomServer {
@@ -114,6 +149,7 @@ class RoomServer {
             'status': 'ok',
             'games': ['dots', 'chess'],
             'dotsBoardSize': 7,
+            'features': ['chessClocks', 'matchSeries'],
           }),
         );
         return;
@@ -160,6 +196,12 @@ class RoomServer {
             'Choose a supported game. Chess needs two players.',
           );
         }
+        final seconds = body['clockSeconds'] ?? 0;
+        if (seconds is! int ||
+            ![0, 60, 180, 300, 600].contains(seconds) ||
+            (gameType != 'chess' && seconds != 0)) {
+          throw ApiError(400, 'Choose a supported chess timer');
+        }
         if (rooms.length >= 500) {
           throw ApiError(503, 'Server is full. Try later.');
         }
@@ -167,7 +209,12 @@ class RoomServer {
         while (rooms.containsKey(roomCode)) {
           roomCode = code();
         }
-        final room = Room(roomCode, players, gameType: gameType as String);
+        final room = Room(
+          roomCode,
+          players,
+          gameType: gameType as String,
+          clockSeconds: seconds,
+        );
         final key = token();
         room.tokens.add(key);
         rooms[roomCode] = room;
@@ -179,12 +226,14 @@ class RoomServer {
         }
         final room = rooms[parts[1].toUpperCase()];
         if (room == null) throw ApiError(404, 'Room not found or expired');
+        room.update();
         if (request.method == 'POST' &&
             parts.length == 3 &&
             parts[2] == 'join') {
           if (room.ready) throw ApiError(409, 'This room is full');
           final key = token();
           room.tokens.add(key);
+          if (room.ready) room.clock?.start();
           room.revision++;
           room.touched = DateTime.now();
           result = {...room.snapshot(room.tokens.length - 1), 'token': key};
@@ -222,9 +271,7 @@ class RoomServer {
             if (body['revision'] != room.revision) {
               throw ApiError(409, 'The board changed');
             }
-            room.state = room.gameType == 'chess'
-                ? ChessGame()
-                : DotsGame(players: room.state.players);
+            room.restart();
             room.revision++;
             result = room.snapshot(player);
           } else {

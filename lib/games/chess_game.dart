@@ -11,14 +11,47 @@ class ChessGame implements PartyGame {
   final String? initialFen;
   final rules.Chess engine;
   final List<String> history = [];
+  int? timeoutLoser;
+  bool timeoutDraw = false;
+  int? get winner => timeoutLoser != null
+      ? (timeoutDraw ? null : 1 - timeoutLoser!)
+      : engine.in_checkmate
+      ? 1 - turn
+      : null;
+  void loseOnTime(int player) {
+    if (finished) return;
+    timeoutLoser = player;
+    final opponent = player == 0 ? rules.Color.BLACK : rules.Color.WHITE;
+    final pieces = engine.board
+        .whereType<rules.Piece>()
+        .where((p) => p.color == opponent)
+        .toList();
+    final loserPieces = engine.board
+        .whereType<rules.Piece>()
+        .where((p) => p.color != opponent)
+        .length;
+    timeoutDraw =
+        pieces.length == 1 ||
+        (loserPieces == 1 &&
+            pieces.length == 2 &&
+            [
+              'b',
+              'n',
+            ].contains(pieces.firstWhere((p) => p.type.name != 'k').type.name));
+  }
+
   @override
   int get players => 2;
   @override
   int get turn => engine.turn == rules.Color.WHITE ? 0 : 1;
   @override
-  bool get finished => engine.game_over;
+  bool get finished => timeoutLoser != null || engine.game_over;
   bool get check => engine.in_check;
-  String get result => engine.in_checkmate
+  String get result => timeoutLoser != null
+      ? timeoutDraw
+            ? 'Draw on time: no mating material'
+            : '${winner == 0 ? 'White' : 'Black'} wins on time!'
+      : engine.in_checkmate
       ? '${turn == 0 ? 'Black' : 'White'} wins by checkmate!'
       : engine.in_stalemate
       ? 'Draw by stalemate'
@@ -55,7 +88,12 @@ class ChessGame implements PartyGame {
   }
 
   @override
-  Map<String, dynamic> toJson() => {'initialFen': initialFen, 'moves': history};
+  Map<String, dynamic> toJson() => {
+    'initialFen': initialFen,
+    'moves': history,
+    'timeoutLoser': timeoutLoser,
+    'timeoutDraw': timeoutDraw,
+  };
   factory ChessGame.fromJson(Map<String, dynamic> data) {
     final game = ChessGame(fen: data['initialFen'] as String?);
     for (final move in (data['moves'] as List).cast<String>()) {
@@ -63,6 +101,8 @@ class ChessGame implements PartyGame {
         throw const FormatException('Invalid chess history');
       }
     }
+    game.timeoutLoser = data['timeoutLoser'] as int?;
+    game.timeoutDraw = data['timeoutDraw'] as bool? ?? false;
     return game;
   }
 }

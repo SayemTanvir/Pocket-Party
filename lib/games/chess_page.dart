@@ -6,10 +6,14 @@ import 'package:flutter/services.dart';
 
 import '../online/online_session.dart';
 import 'chess_game.dart';
+import 'chess_clock.dart';
+import 'match_series.dart';
+import 'match_widgets.dart';
 
 class ChessPage extends StatefulWidget {
-  const ChessPage({super.key, this.bot = false, this.online});
+  const ChessPage({super.key, this.bot = false, this.online, this.seconds = 0});
   final bool bot;
+  final int seconds;
   final OnlineSession? online;
   @override
   State<ChessPage> createState() => _ChessPageState();
@@ -21,12 +25,83 @@ class _ChessPageState extends State<ChessPage> {
   bool flipped = false;
   bool thinking = false;
   int generation = 0;
+  final MatchSeries localSeries = MatchSeries(2);
+  MatchSeries get series => widget.online?.series ?? localSeries;
+  ChessClock? clock;
+  Timer? ticker;
+  bool resultShown = false;
+  DialogRoute<void>? resultDialog;
+  DialogRoute<String>? promotionDialog;
+  List<int>? get remaining => widget.online?.remainingMs ?? clock?.remainingMs;
+  void checkResult() {
+    if (!game.finished) {
+      if (resultDialog?.isActive == true) {
+        Navigator.of(context).removeRoute(resultDialog!);
+      }
+      resultDialog = null;
+      resultShown = false;
+      return;
+    }
+    if (resultShown) return;
+    resultShown = true;
+    if (promotionDialog?.isActive == true) {
+      Navigator.of(context).removeRoute(promotionDialog!);
+    }
+    if (widget.online == null) localSeries.record(game);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !game.finished) return;
+      unawaited(
+        celebrateMatch(
+          context,
+          title: game.result,
+          draw: game.winner == null,
+          onRoute: (route) => resultDialog = route,
+          playAgain: widget.online == null || widget.online!.player == 0
+              ? restart
+              : null,
+        ),
+      );
+    });
+  }
+
+  void restart() {
+    if (widget.online != null) {
+      unawaited(widget.online!.restart());
+      return;
+    }
+    setState(() {
+      generation++;
+      game = ChessGame();
+      selected = null;
+      thinking = false;
+      resultShown = false;
+      clock = widget.seconds == 0
+          ? null
+          : (ChessClock(widget.seconds)..start());
+    });
+  }
+
+  void tick() {
+    if (!mounted) return;
+    setState(() {
+      if (widget.online == null) clock?.settle(game);
+    });
+    checkResult();
+  }
+
   @override
   void initState() {
     super.initState();
     game = widget.online?.chessGame ?? ChessGame();
     flipped = widget.online?.player == 1;
     widget.online?.addListener(sync);
+    clock = widget.seconds == 0 || widget.online != null
+        ? null
+        : (ChessClock(widget.seconds)..start());
+    if (clock != null || widget.online?.clock != null) {
+      ticker = Timer.periodic(const Duration(milliseconds: 100), (_) => tick());
+    }
+    checkResult();
   }
 
   void sync() {
@@ -36,11 +111,13 @@ class _ChessPageState extends State<ChessPage> {
       if (next.engine.fen != game.engine.fen) selected = null;
       game = next;
     });
+    checkResult();
   }
 
   @override
   void dispose() {
     generation++;
+    ticker?.cancel();
     widget.online?.removeListener(sync);
     widget.online?.dispose();
     super.dispose();
@@ -51,6 +128,8 @@ class _ChessPageState extends State<ChessPage> {
       !thinking &&
       (widget.online?.canMove ?? (!widget.bot || game.turn == 0));
   Future<void> tap(String square) async {
+    if (widget.online == null) clock?.settle(game);
+    checkResult();
     if (!canMove) return;
     final moves = game.legalMoves
         .where((m) => m.startsWith('${selected ?? '-'}$square'))
@@ -66,7 +145,7 @@ class _ChessPageState extends State<ChessPage> {
     var move = moves.first;
     if (moves.length > 1) {
       final revision = game.history.length;
-      final promotion = await showDialog<String>(
+      promotionDialog = DialogRoute<String>(
         context: context,
         builder: (context) => SimpleDialog(
           title: const Text('Promote pawn'),
@@ -84,6 +163,8 @@ class _ChessPageState extends State<ChessPage> {
           ],
         ),
       );
+      final promotion = await Navigator.of(context).push(promotionDialog!);
+      promotionDialog = null;
       if (!mounted ||
           promotion == null ||
           revision != game.history.length ||
@@ -97,15 +178,18 @@ class _ChessPageState extends State<ChessPage> {
       await widget.online!.move(move);
     } else {
       setState(() => game.play(move));
+      checkResult();
       if (widget.bot && !game.finished) {
         setState(() => thinking = true);
         final current = generation;
         final reply = await compute(chooseChessBotMove, game.toJson());
         if (!mounted || current != generation) return;
         setState(() {
-          game.play(reply);
+          clock?.settle(game);
+          if (!game.finished) game.play(reply);
           thinking = false;
         });
+        checkResult();
       }
     }
   }
@@ -160,12 +244,7 @@ class _ChessPageState extends State<ChessPage> {
           if (widget.online == null)
             IconButton(
               tooltip: 'Restart game',
-              onPressed: () => setState(() {
-                generation++;
-                game = ChessGame();
-                selected = null;
-                thinking = false;
-              }),
+              onPressed: restart,
               icon: const Icon(Icons.refresh),
             ),
         ],
@@ -204,6 +283,20 @@ class _ChessPageState extends State<ChessPage> {
                         ),
                       ),
                   ],
+                  SeriesScore(
+                    series: series,
+                    labels: [
+                      widget.bot ? 'You' : 'White',
+                      widget.bot ? 'Bot' : 'Black',
+                    ],
+                    player: widget.online?.player,
+                  ),
+                  if (remaining != null)
+                    ChessClocks(
+                      remainingMs: remaining!,
+                      turn: game.turn,
+                      finished: game.finished,
+                    ),
                   Text(
                     status,
                     textAlign: TextAlign.center,
@@ -343,11 +436,10 @@ class _ChessPageState extends State<ChessPage> {
                           ].join('   '),
                     textAlign: TextAlign.center,
                   ),
-                  if (game.finished && widget.online?.player == 0)
+                  if (game.finished &&
+                      (widget.online == null || widget.online!.player == 0))
                     FilledButton(
-                      onPressed: widget.online!.busy
-                          ? null
-                          : () => widget.online!.restart(),
+                      onPressed: widget.online?.busy == true ? null : restart,
                       child: const Text('Play again'),
                     ),
                 ],

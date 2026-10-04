@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 import 'games/dots_game.dart';
 import 'games/chess_page.dart';
 import 'games/dots_bot.dart';
+import 'games/match_series.dart';
+import 'games/match_widgets.dart';
 import 'online/online_session.dart';
 import 'online/room_setup_page.dart';
 
@@ -38,19 +40,12 @@ class PartyApp extends StatelessWidget {
   );
 }
 
-class Lobby extends StatefulWidget {
-  const Lobby({super.key});
-  @override
-  State<Lobby> createState() => _LobbyState();
-}
+Widget onlineMatch(OnlineSession session) => session.gameType == 'chess'
+    ? ChessPage(online: session)
+    : MatchPage(players: session.game.players, bot: false, online: session);
 
-class _LobbyState extends State<Lobby> {
-  int players = 2;
-  bool bot = false;
-  bool chessBot = false;
-  Widget onlineMatch(OnlineSession session) => session.gameType == 'chess'
-      ? ChessPage(online: session)
-      : MatchPage(players: session.game.players, bot: false, online: session);
+class Lobby extends StatelessWidget {
+  const Lobby({super.key});
   @override
   Widget build(BuildContext context) => Scaffold(
     body: SafeArea(
@@ -58,13 +53,13 @@ class _LobbyState extends State<Lobby> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
+            constraints: const BoxConstraints(maxWidth: 500),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Icon(
                   Icons.sports_esports_rounded,
-                  size: 56,
+                  size: 64,
                   color: Color(0xFF68E0C2),
                 ),
                 const SizedBox(height: 24),
@@ -73,134 +68,170 @@ class _LobbyState extends State<Lobby> {
                   style: Theme.of(context).textTheme.displaySmall,
                 ),
                 const SizedBox(height: 8),
-                const Text('Small games. Good company.'),
-                const SizedBox(height: 36),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Dots & Boxes',
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          '36 boxes to battle for. Complete a box to take another turn and turn a chain into a comeback.',
-                        ),
-                        const SizedBox(height: 24),
-                        SegmentedButton<int>(
-                          showSelectedIcon: false,
-                          segments: [
-                            for (final n in [2, 3, 4])
-                              ButtonSegment(
-                                value: n,
-                                label: Text('$n players'),
-                              ),
-                          ],
-                          selected: {players},
-                          onSelectionChanged: (value) => setState(() {
-                            players = value.first;
-                            if (players != 2) bot = false;
-                          }),
-                        ),
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: const Text('Play against a bot'),
-                          subtitle: const Text(
-                            'Two players · simple difficulty',
-                          ),
-                          value: bot,
-                          onChanged: (value) => setState(() {
-                            bot = value;
-                            if (value) players = 2;
-                          }),
-                        ),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton.icon(
-                            icon: const Icon(Icons.play_arrow_rounded),
-                            label: const Text('Start game'),
-                            onPressed: () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) =>
-                                    MatchPage(players: players, bot: bot),
-                              ),
-                            ),
+                const Text('Pick your next challenge.'),
+                const SizedBox(height: 32),
+                for (final type in ['dots', 'chess'])
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: Card(
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => GameSetupPage(gameType: type),
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.public),
-                            label: const Text('Play with friends'),
-                            onPressed: () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) =>
-                                    RoomSetupPage(matchBuilder: onlineMatch),
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Row(
+                            children: [
+                              Icon(
+                                type == 'dots' ? Icons.grid_on : Icons.castle,
+                                size: 48,
+                                color: type == 'dots'
+                                    ? const Color(0xFF68E0C2)
+                                    : const Color(0xFFFFBC73),
                               ),
-                            ),
+                              const SizedBox(width: 20),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      type == 'dots' ? 'Dots & Boxes' : 'Chess',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .headlineSmall,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      type == 'dots'
+                                          ? '36 boxes. Big chains. Late comebacks.'
+                                          : 'Protect your king. Play with or without a clock.',
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.chevron_right),
+                            ],
                           ),
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          'Chess',
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'A classic battle of strategy. Two players, one king to protect.',
-                        ),
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: const Text('Play against a chess bot'),
-                          subtitle: const Text('Beginner difficulty'),
-                          value: chessBot,
-                          onChanged: (value) =>
-                              setState(() => chessBot = value),
-                        ),
-                        FilledButton.icon(
-                          icon: const Icon(Icons.play_arrow),
-                          label: const Text('Start chess'),
-                          onPressed: () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => ChessPage(bot: chessBot),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        OutlinedButton.icon(
-                          icon: const Icon(Icons.public),
-                          label: const Text('Chess with friends'),
-                          onPressed: () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => RoomSetupPage(
-                                gameType: 'chess',
-                                matchBuilder: onlineMatch,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
                 const Text(
-                  'Local play · share this device',
-                  style: TextStyle(color: Colors.white54),
+                  'Local play, bots and private online rooms.',
+                  style: TextStyle(color: Colors.white70),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+class GameSetupPage extends StatefulWidget {
+  const GameSetupPage({super.key, required this.gameType});
+  final String gameType;
+  @override
+  State<GameSetupPage> createState() => _GameSetupPageState();
+}
+
+class _GameSetupPageState extends State<GameSetupPage> {
+  int players = 2;
+  int seconds = 0;
+  bool bot = false;
+  bool get chess => widget.gameType == 'chess';
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: Text(chess ? 'Chess' : 'Dots & Boxes')),
+    body: SafeArea(
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Icon(
+                  chess ? Icons.castle : Icons.grid_on,
+                  size: 72,
+                  color: const Color(0xFF68E0C2),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Make it your game',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  chess
+                      ? 'A battle of strategy for two players. Choose a clock or take your time.'
+                      : 'Connect dots and claim boxes. Complete a box to keep your turn and capture a chain.',
+                ),
+                const SizedBox(height: 24),
+                if (!chess)
+                  SegmentedButton<int>(
+                    showSelectedIcon: false,
+                    segments: [
+                      for (final n in [2, 3, 4])
+                        ButtonSegment(value: n, label: Text('$n players')),
+                    ],
+                    selected: {players},
+                    onSelectionChanged: (value) => setState(() {
+                      players = value.first;
+                      if (players != 2) bot = false;
+                    }),
+                  ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Play against a bot'),
+                  subtitle: Text(chess ? 'You play White' : 'Two players'),
+                  value: bot,
+                  onChanged: (value) => setState(() {
+                    bot = value;
+                    if (value) players = 2;
+                  }),
+                ),
+                if (chess) ...[
+                  TimeControlPicker(
+                    seconds: seconds,
+                    onChanged: (value) => setState(() => seconds = value),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+                FilledButton.icon(
+                  icon: const Icon(Icons.play_arrow),
+                  label: Text(chess ? 'Start chess' : 'Start game'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => chess
+                          ? ChessPage(bot: bot, seconds: seconds)
+                          : MatchPage(players: players, bot: bot),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.public),
+                  label: const Text('Play with friends'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => RoomSetupPage(
+                        gameType: widget.gameType,
+                        seconds: seconds,
+                        matchBuilder: onlineMatch,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Completed games count toward this series. Play again to keep your wins, losses and draws.',
+                  style: TextStyle(color: Colors.white70),
                 ),
               ],
             ),
@@ -228,16 +259,62 @@ class MatchPage extends StatefulWidget {
 class _MatchPageState extends State<MatchPage> {
   late DotsGame game;
   Timer? botTimer;
+  late final MatchSeries localSeries = MatchSeries(widget.players);
+  MatchSeries get series => widget.online?.series ?? localSeries;
+  bool resultShown = false;
+  DialogRoute<void>? resultDialog;
+  void restart() {
+    if (widget.online != null) {
+      unawaited(widget.online!.restart());
+      return;
+    }
+    botTimer?.cancel();
+    setState(() {
+      game = DotsGame(players: widget.players);
+      resultShown = false;
+    });
+  }
+
+  void checkResult() {
+    if (!game.finished) {
+      if (resultDialog?.isActive == true) {
+        Navigator.of(context).removeRoute(resultDialog!);
+      }
+      resultDialog = null;
+      resultShown = false;
+      return;
+    }
+    if (resultShown) return;
+    resultShown = true;
+    if (widget.online == null) localSeries.record(game);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !game.finished) return;
+      unawaited(
+        celebrateMatch(
+          context,
+          title: status,
+          draw: matchWinner(game) == null,
+          onRoute: (route) => resultDialog = route,
+          playAgain: widget.online == null || widget.online!.player == 0
+              ? restart
+              : null,
+        ),
+      );
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     game = widget.online?.game ?? DotsGame(players: widget.players);
     widget.online?.addListener(updateOnline);
+    checkResult();
   }
 
   void updateOnline() {
     if (!mounted) return;
     setState(() => game = widget.online!.game);
+    checkResult();
   }
 
   @override
@@ -255,6 +332,7 @@ class _MatchPageState extends State<MatchPage> {
     }
     if (!game.play(move)) return;
     setState(() {});
+    checkResult();
     if (widget.bot && game.turn == 1 && !game.finished) {
       botTimer = Timer(const Duration(milliseconds: 450), () {
         if (!mounted) return;
@@ -302,10 +380,7 @@ class _MatchPageState extends State<MatchPage> {
           IconButton(
             tooltip: 'Restart game',
             icon: const Icon(Icons.refresh),
-            onPressed: () {
-              botTimer?.cancel();
-              setState(() => game = DotsGame(players: widget.players));
-            },
+            onPressed: restart,
           ),
       ],
     ),
@@ -336,6 +411,19 @@ class _MatchPageState extends State<MatchPage> {
                       ),
                   ],
                 ),
+                SeriesScore(
+                  series: series,
+                  labels: [
+                    for (var p = 0; p < game.players; p++)
+                      widget.bot && p == 1 ? 'Bot' : 'Player ${p + 1}',
+                  ],
+                  player: widget.online?.player,
+                ),
+                if (game.finished && widget.online == null)
+                  FilledButton(
+                    onPressed: restart,
+                    child: const Text('Play again'),
+                  ),
                 if (widget.online != null) ...[
                   const SizedBox(height: 16),
                   Text('You are Player ${widget.online!.player + 1}'),

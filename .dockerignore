@@ -11,3 +11,6 @@
 !server/pubspec.lock
 !lib/games/party_game.dart
 !lib/games/chess_game.dart
+
+!lib/games/chess_clock.dart
+!lib/games/match_series.dart

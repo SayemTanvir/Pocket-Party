@@ -6,6 +6,9 @@ import 'package:pocket_party/online/online_session.dart';
 
 import '../server/room_server.dart';
 
+// ignore: avoid_relative_lib_imports
+import '../lib/games/chess_clock.dart';
+
 void main() {
   late RoomServer server;
   late String base;
@@ -161,6 +164,55 @@ void main() {
       guest.dispose();
     }
   });
+
+  test(
+    'Server owns online timeouts, counts once and preserves records on rematch',
+    () async {
+      final host = await OnlineSession.open(
+        base,
+        players: 2,
+        gameType: 'chess',
+        clockSeconds: 60,
+      );
+      OnlineSession? guest;
+      try {
+        final room = server.rooms[host.code]!;
+        var now = 0;
+        room.clock = ChessClock(60, now: () => now);
+        now = 120000;
+        await host.refresh();
+        expect(host.chessGame.finished, isFalse);
+        expect(host.remainingMs, [60000, 60000]);
+        guest = await OnlineSession.open(base, code: host.code);
+        now += 61000;
+        await host.refresh();
+        await guest.refresh();
+        expect(host.chessGame.winner, 1);
+        expect(guest.chessGame.finished, isTrue);
+        expect(host.series.losses, [1, 0]);
+        expect(host.series.wins, [0, 1]);
+        await host.refresh();
+        expect(host.series.wins, [0, 1]);
+        await host.restart();
+        await guest.refresh();
+        expect(guest.chessGame.finished, isFalse);
+        expect(guest.round, 2);
+        expect(guest.series.wins, [0, 1]);
+        expect(guest.clock!['seconds'], 60);
+        expect(
+          (await post('/rooms', {
+            'players': 2,
+            'gameType': 'chess',
+            'clockSeconds': -1,
+          })).statusCode,
+          400,
+        );
+      } finally {
+        host.dispose();
+        guest?.dispose();
+      }
+    },
+  );
 
   test('Malformed and unknown room requests have useful errors', () async {
     expect((await post('/rooms', {'players': 8})).statusCode, 400);

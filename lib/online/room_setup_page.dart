@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 
 import 'online_session.dart';
+import '../games/match_widgets.dart';
 
 class RoomSetupPage extends StatefulWidget {
   const RoomSetupPage({
     super.key,
     required this.matchBuilder,
     this.gameType = 'dots',
+    this.seconds = 0,
   });
   final String gameType;
+  final int seconds;
   final Widget Function(OnlineSession) matchBuilder;
   @override
   State<RoomSetupPage> createState() => _RoomSetupPageState();
@@ -23,6 +26,13 @@ class _RoomSetupPageState extends State<RoomSetupPage> {
   );
   final code = TextEditingController();
   int players = 2;
+  late int seconds;
+  @override
+  void initState() {
+    super.initState();
+    seconds = widget.seconds;
+  }
+
   bool busy = false;
   String? error;
   @override
@@ -42,6 +52,7 @@ class _RoomSetupPageState extends State<RoomSetupPage> {
         address.text,
         players: create ? players : null,
         gameType: widget.gameType,
+        clockSeconds: seconds,
         code: create ? null : code.text,
       );
       if (!mounted) {
@@ -109,6 +120,13 @@ class _RoomSetupPageState extends State<RoomSetupPage> {
                     onSelectionChanged: busy
                         ? null
                         : (values) => setState(() => players = values.first),
+                  ),
+                if (widget.gameType == 'chess')
+                  TimeControlPicker(
+                    seconds: seconds,
+                    onChanged: busy
+                        ? null
+                        : (value) => setState(() => seconds = value),
                   ),
                 const SizedBox(height: 16),
                 FilledButton.icon(

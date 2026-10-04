@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../games/dots_game.dart';
 import '../games/chess_game.dart';
 import '../games/party_game.dart';
+import '../games/match_series.dart';
 
 class OnlineSession extends ChangeNotifier {
   OnlineSession._(this.baseUrl, this.token, Map<String, dynamic> data) {
@@ -22,6 +23,23 @@ class OnlineSession extends ChangeNotifier {
   late String gameType;
   DotsGame get game => state as DotsGame;
   ChessGame get chessGame => state as ChessGame;
+  late MatchSeries series;
+  int round = 1;
+  Map<String, dynamic>? clock;
+  final Stopwatch clockAge = Stopwatch();
+  List<int>? get remainingMs {
+    if (clock == null) return null;
+    final remaining = (clock!['remainingMs'] as List).cast<int>().toList();
+    if (ready && !state.finished && clock!['running'] == true) {
+      remaining[state.turn] =
+          (remaining[state.turn] - clockAge.elapsedMilliseconds).clamp(
+            0,
+            600000,
+          );
+    }
+    return remaining;
+  }
+
   int joined = 1;
   int revision = -1;
   bool ready = false;
@@ -61,6 +79,7 @@ class OnlineSession extends ChangeNotifier {
     String address, {
     int? players,
     String gameType = 'dots',
+    int clockSeconds = 0,
     String? code,
   }) async {
     final base = normalizeUrl(address);
@@ -82,12 +101,29 @@ class OnlineSession extends ChangeNotifier {
           health.statusCode,
         );
       }
+      if (players != null && clockSeconds > 0) {
+        final capabilities = jsonDecode(health.body) as Map<String, dynamic>;
+        if (!(capabilities['features'] as List? ?? []).contains(
+          'chessClocks',
+        )) {
+          throw RoomException(
+            'The server timer update is deploying. Try again shortly.',
+            503,
+          );
+        }
+      }
       final response = await client
           .post(
             Uri.parse('$base/rooms${players == null ? '/$joinCode/join' : ''}'),
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode(
-              players == null ? {} : {'players': players, 'gameType': gameType},
+              players == null
+                  ? {}
+                  : {
+                      'players': players,
+                      'gameType': gameType,
+                      'clockSeconds': clockSeconds,
+                    },
             ),
           )
           .timeout(const Duration(seconds: 8));
@@ -119,9 +155,17 @@ class OnlineSession extends ChangeNotifier {
     revision = next;
     gameType = data['gameType'] as String? ?? 'dots';
     final snapshot = data['game'] as Map<String, dynamic>;
+    clock = data['clock'] as Map<String, dynamic>?;
+    clockAge
+      ..reset()
+      ..start();
+    round = data['round'] as int? ?? 1;
     state = gameType == 'chess'
         ? ChessGame.fromJson(snapshot)
         : DotsGame.fromJson(snapshot);
+    series = data['series'] == null
+        ? MatchSeries(state.players)
+        : MatchSeries.fromJson(data['series'] as Map<String, dynamic>);
   }
 
   Future<void> refresh() async {
