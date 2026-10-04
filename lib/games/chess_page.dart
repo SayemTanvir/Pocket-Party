@@ -271,22 +271,31 @@ class _ChessPageState extends State<ChessPage> {
                                   children: [
                                     if (piece != null)
                                       Center(
-                                        child: Text(
-                                          '${glyphs[piece]!}\uFE0E',
-                                          style: TextStyle(
-                                            fontSize: size.maxWidth / 8 * .8,
-                                            height: 1,
-                                            color: white
-                                                ? Colors.white
-                                                : const Color(0xFF17212B),
-                                            shadows: const [
-                                              Shadow(
-                                                color: Colors.black54,
-                                                blurRadius: 2,
+                                        child: piece.toLowerCase() == 'p'
+                                            ? CustomPaint(
+                                                size: Size(
+                                                  size.maxWidth / 8 * .65,
+                                                  size.maxWidth / 8 * .78,
+                                                ),
+                                                painter: _PawnPainter(white),
+                                              )
+                                            : Text(
+                                                '${glyphs[piece]!}\uFE0E',
+                                                style: TextStyle(
+                                                  fontSize:
+                                                      size.maxWidth / 8 * .8,
+                                                  height: 1,
+                                                  color: white
+                                                      ? Colors.white
+                                                      : const Color(0xFF17212B),
+                                                  shadows: const [
+                                                    Shadow(
+                                                      color: Colors.black54,
+                                                      blurRadius: 2,
+                                                    ),
+                                                  ],
+                                                ),
                                               ),
-                                            ],
-                                          ),
-                                        ),
                                       ),
                                     if (target && piece == null)
                                       Center(
@@ -349,4 +358,43 @@ class _ChessPageState extends State<ChessPage> {
       ),
     );
   }
+}
+
+class _PawnPainter extends CustomPainter {
+  const _PawnPainter(this.white);
+  final bool white;
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.scale(size.width / 40, size.height / 48);
+    final body = Path()
+      ..moveTo(14, 19)
+      ..lineTo(26, 19)
+      ..cubicTo(24, 27, 25, 33, 32, 38)
+      ..lineTo(34, 44)
+      ..lineTo(6, 44)
+      ..lineTo(8, 38)
+      ..cubicTo(15, 33, 16, 27, 14, 19)
+      ..close();
+    final fill = Paint()
+      ..color = white ? Colors.white : const Color(0xFF17212B);
+    final outline = Paint()
+      ..color = const Color(0xFF17212B)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    canvas.drawPath(body, fill);
+    canvas.drawPath(body, outline);
+    canvas.drawCircle(const Offset(20, 10), 7.5, fill);
+    canvas.drawCircle(const Offset(20, 10), 7.5, outline);
+    final collar = RRect.fromRectAndRadius(
+      const Rect.fromLTWH(11, 18, 18, 4),
+      const Radius.circular(2),
+    );
+    canvas.drawRRect(collar, fill);
+    canvas.drawRRect(collar, outline);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_PawnPainter oldDelegate) => oldDelegate.white != white;
 }
