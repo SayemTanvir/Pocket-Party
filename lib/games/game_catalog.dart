@@ -45,7 +45,7 @@ const gameCatalog = [
     'darts',
     'Darts',
     'Steady aim. Perfect timing.',
-    'Drag on the board to aim, then release to throw. The sight moves, so time your release. Three darts per turn, five rounds. Highest total wins. Outer ring doubles, middle ring triples, bull scores 25 or 50.',
+    'The aim marker roams across the whole circular board. Tap the board or Throw dart to hit its current position. Time your throw carefully. Three darts per turn, five rounds. Highest total wins. Outer ring doubles, middle ring triples, bull scores 25 or 50.',
     Icons.my_location_rounded,
     Color(0xFFFF83A5),
     'Action',

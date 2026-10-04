@@ -22,7 +22,8 @@ class _DartsBoardState extends State<DartsBoard>
     with SingleTickerProviderStateMixin {
   late final AnimationController motion = AnimationController(
     vsync: this,
-    duration: const Duration(seconds: 4),
+    duration: const Duration(seconds: 18),
+    value: Random().nextDouble(),
   )..repeat();
   @override
   void initState() {
@@ -41,19 +42,13 @@ class _DartsBoardState extends State<DartsBoard>
     }
   }
 
-  Offset aim = Offset.zero;
-  Offset get sight =>
-      aim +
-      Offset(
-        sin(motion.value * pi * 6) * .13,
-        cos(motion.value * pi * 4) * .13,
-      );
-  void aimAt(Offset local, double width) {
-    final radius = width * .41;
-    aim = Offset(
-      ((local.dx - width / 2) / radius).clamp(-1.1, 1.1),
-      ((local.dy - width / 2) / radius).clamp(-1.1, 1.1),
-    );
+  Offset get sight {
+    final phase = motion.value * 2 * pi;
+    // Sweeping through the centre while rotating reaches every part of the
+    // circular scoring area, with a continuous path at the animation loop.
+    final radius = .99 * sin(phase * 7);
+    final angle = phase * 3 + .35 * sin(phase * 2);
+    return Offset(cos(angle) * radius, sin(angle) * radius);
   }
 
   void throwDart() {
@@ -86,21 +81,10 @@ class _DartsBoardState extends State<DartsBoard>
               AnimatedBuilder(
                 animation: motion,
                 builder: (_, child) => Semantics(
-                  label: 'Dartboard. Drag to aim and release to throw.',
+                  label: 'Dartboard. Tap to throw at the moving aim marker.',
                   child: GestureDetector(
-                    onPanStart: widget.enabled
-                        ? (event) => aimAt(event.localPosition, size.maxWidth)
-                        : null,
-                    onPanUpdate: widget.enabled
-                        ? (event) => aimAt(event.localPosition, size.maxWidth)
-                        : null,
                     onPanEnd: widget.enabled ? (_) => throwDart() : null,
-                    onTapUp: widget.enabled
-                        ? (event) {
-                            aimAt(event.localPosition, size.maxWidth);
-                            throwDart();
-                          }
-                        : null,
+                    onTapUp: widget.enabled ? (_) => throwDart() : null,
                     child: CustomPaint(
                       painter: _AimPainter(widget.enabled ? sight : null),
                     ),
@@ -122,7 +106,7 @@ class _DartsBoardState extends State<DartsBoard>
       ),
       const SizedBox(height: 8),
       const Text(
-        'Drag to aim · release to throw',
+        'Time your throw · tap the board or Throw dart',
         style: TextStyle(color: Colors.white60),
       ),
     ],
