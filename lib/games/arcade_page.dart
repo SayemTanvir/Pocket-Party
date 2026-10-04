@@ -387,6 +387,77 @@ class _ArcadePageState extends State<ArcadePage> {
     );
   }
 
+  Future<void> selectLetter(int tile) async {
+    if (!canPlay) return;
+    final current = generation;
+    setState(() => selected = tile);
+    var choice = letter;
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (_, update) => SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Choose a letter',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                Text('Row ${tile ~/ 5 + 1}, column ${tile % 5 + 1}'),
+                const SizedBox(height: 20),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    for (var c = 65; c <= 90; c++)
+                      SizedBox(
+                        width: 44,
+                        height: 44,
+                        child: TextButton(
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            backgroundColor: choice == String.fromCharCode(c)
+                                ? const Color(0xFF645594)
+                                : const Color(0xFF1C293B),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          onPressed: () =>
+                              update(() => choice = String.fromCharCode(c)),
+                          child: Text(String.fromCharCode(c)),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(sheetContext, choice),
+                    child: Text('Place $choice'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    if (!mounted) return;
+    setState(() => selected = null);
+    if (picked == null || current != generation || !canPlay) return;
+    if ((game as WordGame).cells[tile].isNotEmpty) return;
+    letter = picked;
+    await play('$tile:$picked');
+  }
+
   Widget wordBoard(WordGame word) => Column(
     children: [
       Text(
@@ -405,12 +476,13 @@ class _ArcadePageState extends State<ArcadePage> {
             crossAxisSpacing: 6,
           ),
           itemBuilder: (_, i) => Semantics(
+            key: ValueKey('word-tile-$i'),
             button: true,
             label:
                 'Word tile ${i + 1}${word.cells[i].isEmpty ? ' empty' : ' ${word.cells[i]}'}',
             child: InkWell(
               onTap: canPlay && word.cells[i].isEmpty
-                  ? () => setState(() => selected = i)
+                  ? () => unawaited(selectLetter(i))
                   : null,
               borderRadius: BorderRadius.circular(12),
               child: AnimatedContainer(
@@ -464,44 +536,9 @@ class _ArcadePageState extends State<ArcadePage> {
       ),
       if (!game.finished) ...[
         const SizedBox(height: 16),
-        Wrap(
-          spacing: 4,
-          runSpacing: 4,
-          alignment: WrapAlignment.center,
-          children: [
-            for (var c = 65; c <= 90; c++)
-              SizedBox(
-                width: 42,
-                height: 42,
-                child: TextButton(
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    backgroundColor: letter == String.fromCharCode(c)
-                        ? const Color(0xFF645594)
-                        : const Color(0xFF1C293B),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  onPressed: canPlay
-                      ? () => setState(() => letter = String.fromCharCode(c))
-                      : null,
-                  child: Text(String.fromCharCode(c)),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton(
-            onPressed: canPlay && selected != null
-                ? () => unawaited(play('$selected:$letter'))
-                : null,
-            child: Text(
-              selected == null ? 'Select an empty tile' : 'Place $letter',
-            ),
-          ),
+        const Text(
+          'Tap an empty tile to choose a letter.',
+          style: TextStyle(color: Colors.white60),
         ),
       ],
     ],

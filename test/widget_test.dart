@@ -12,6 +12,29 @@ import '../server/room_server.dart';
 import '../lib/games/dots_game.dart';
 
 void main() {
+  testWidgets('Word Grid places letters from the sheet and scores a word', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: ArcadePage(type: 'words')));
+    final semantics = tester.ensureSemantics();
+    for (var i = 0; i < 3; i++) {
+      final tile = find.byKey(ValueKey('word-tile-$i'));
+      await tester.ensureVisible(tile);
+      await tester.tap(tile);
+      await tester.pumpAndSettle();
+      final letter = 'CAT'[i];
+      await tester.tap(find.widgetWithText(TextButton, letter));
+      await tester.pump();
+      await tester.tap(find.widgetWithText(FilledButton, 'Place $letter'));
+      await tester.pumpAndSettle();
+    }
+    expect(find.text('Player 1  3'), findsOneWidget);
+    expect(find.text('CAT +3'), findsOneWidget);
+    expect(find.text('Choose a letter'), findsNothing);
+    expect(tester.takeException(), isNull);
+    semantics.dispose();
+  });
+
   testWidgets('Connect Four drops a disc and passes the turn', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(home: ArcadePage(type: 'connect')),

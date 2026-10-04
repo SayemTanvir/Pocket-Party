@@ -288,7 +288,7 @@ class _LobbyState extends State<Lobby> {
                                       ),
                                       const SizedBox(height: 12),
                                       Text(
-                                        '${info.maxPlayers == 2 ? '2' : '2?4'} players  ?  ${info.duration}',
+                                        '${info.maxPlayers == 2 ? '2' : '2–4'} players  ·  ${info.duration}',
                                         style: TextStyle(
                                           fontSize: 10,
                                           color: info.color,
@@ -309,7 +309,7 @@ class _LobbyState extends State<Lobby> {
                   padding: EdgeInsets.fromLTRB(24, 24, 24, 28),
                   sliver: SliverToBoxAdapter(
                     child: Text(
-                      'PLAY YOUR WAY  ?  LOCAL / BOT / ONLINE',
+                      'PLAY YOUR WAY  ·  LOCAL / BOT / ONLINE',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 10,
@@ -387,7 +387,7 @@ class _GameSetupPageState extends State<GameSetupPage> {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          '${info.maxPlayers == 2 ? '2' : '2?4'} players ? ${info.duration}',
+                          '${info.maxPlayers == 2 ? '2' : '2–4'} players · ${info.duration}',
                           style: const TextStyle(color: Colors.white60),
                         ),
                       ],
