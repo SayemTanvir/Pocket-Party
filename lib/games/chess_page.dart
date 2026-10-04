@@ -271,7 +271,7 @@ class _ChessPageState extends State<ChessPage> {
                                     if (piece != null)
                                       Center(
                                         child: Text(
-                                          glyphs[piece]!,
+                                      '${glyphs[piece]!}\uFE0E',
                                           style: TextStyle(
                                             fontSize: size.maxWidth / 8 * .8,
                                             height: 1,
