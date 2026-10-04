@@ -32,8 +32,9 @@ class _ChessPageState extends State<ChessPage> {
   void sync() {
     if (!mounted) return;
     setState(() {
-      game = widget.online!.chessGame;
-      selected = null;
+      final next = widget.online!.chessGame;
+      if (next.engine.fen != game.engine.fen) selected = null;
+      game = next;
     });
   }
 
@@ -271,7 +272,7 @@ class _ChessPageState extends State<ChessPage> {
                                     if (piece != null)
                                       Center(
                                         child: Text(
-                                      '${glyphs[piece]!}\uFE0E',
+                                          '${glyphs[piece]!}\uFE0E',
                                           style: TextStyle(
                                             fontSize: size.maxWidth / 8 * .8,
                                             height: 1,
