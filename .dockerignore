@@ -1,0 +1,9 @@
+**
+!Dockerfile
+!server/
+!server/pubspec.yaml
+!server/main.dart
+!server/room_server.dart
+!lib/
+!lib/games/
+!lib/games/dots_game.dart

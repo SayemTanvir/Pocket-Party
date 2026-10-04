@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:pocket_party/games/dots_game.dart';
+// The server compiles independently of Flutter and shares these pure Dart rules.
+// ignore: avoid_relative_lib_imports
+import '../lib/games/dots_game.dart';
 
 class ApiError implements Exception {
   ApiError(this.status, this.message);
@@ -30,10 +32,33 @@ class Room {
 }
 
 class RoomServer {
+  RoomServer({
+    this.requestLimit = 1200,
+    this.creationLimit = 40,
+    this.rateWindow = const Duration(minutes: 1),
+  });
+  final int requestLimit;
+  final int creationLimit;
+  final Duration rateWindow;
+  final Map<String, _RateBucket> _rates = {};
   final Map<String, Room> rooms = {};
   final Random random = Random.secure();
   Timer? cleanup;
   HttpServer? http;
+
+  void _checkRate(String key, int limit) {
+    final now = DateTime.now();
+    _rates.removeWhere(
+      (_, value) => now.difference(value.started) >= rateWindow,
+    );
+    if (!_rates.containsKey(key) && _rates.length >= 2000) {
+      throw ApiError(429, 'Server is busy. Try again shortly.');
+    }
+    final bucket = _rates.putIfAbsent(key, () => _RateBucket(now));
+    if (++bucket.count > limit) {
+      throw ApiError(429, 'Too many requests. Try again shortly.');
+    }
+  }
 
   String token() =>
       base64Url.encode(List.generate(24, (_) => random.nextInt(256)));
@@ -61,6 +86,7 @@ class RoomServer {
 
   Future<void> handle(HttpRequest request) async {
     final response = request.response;
+    StreamSubscription<List<int>>? bodySubscription;
     response.headers.set('Access-Control-Allow-Origin', '*');
     response.headers.set(
       'Access-Control-Allow-Headers',
@@ -78,13 +104,32 @@ class RoomServer {
         response.write(jsonEncode({'status': 'ok'}));
         return;
       }
+      final source = request.connectionInfo?.remoteAddress.address ?? 'unknown';
+      _checkRate('requests:$source', requestLimit);
+      if (request.method == 'POST' && request.uri.path == '/rooms') {
+        _checkRate('create:$source', creationLimit);
+      }
       Map<String, dynamic> body = {};
       if (request.method == 'POST') {
         final bytes = <int>[];
-        await for (final chunk in request) {
-          bytes.addAll(chunk);
-          if (bytes.length > 4096) throw ApiError(413, 'Request too large');
-        }
+        final complete = Completer<void>();
+        bodySubscription = request.listen(
+          (chunk) {
+            if (complete.isCompleted) return;
+            if (bytes.length + chunk.length > 4096) {
+              complete.completeError(ApiError(413, 'Request too large'));
+            } else {
+              bytes.addAll(chunk);
+            }
+          },
+          onDone: () {
+            if (!complete.isCompleted) complete.complete();
+          },
+          onError: (Object error) {
+            if (!complete.isCompleted) complete.completeError(error);
+          },
+        );
+        await complete.future.timeout(const Duration(seconds: 10));
         body = Map<String, dynamic>.from(jsonDecode(utf8.decode(bytes)) as Map);
       }
       Object result;
@@ -167,7 +212,11 @@ class RoomServer {
       response.write(jsonEncode(result));
     } on ApiError catch (error) {
       response.statusCode = error.status;
+      if (error.status == 429) response.headers.set('Retry-After', '60');
       response.write(jsonEncode({'error': error.message}));
+    } on TimeoutException {
+      response.statusCode = 408;
+      response.write(jsonEncode({'error': 'Request timed out'}));
     } on FormatException {
       response.statusCode = 400;
       response.write(jsonEncode({'error': 'Invalid request'}));
@@ -179,6 +228,13 @@ class RoomServer {
       response.write(jsonEncode({'error': 'Server error'}));
     } finally {
       await response.close();
+      await bodySubscription?.cancel();
     }
   }
+}
+
+class _RateBucket {
+  _RateBucket(this.started);
+  final DateTime started;
+  int count = 0;
 }

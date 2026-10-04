@@ -140,4 +140,32 @@ void main() {
     );
     expect(response.statusCode, 400);
   });
+
+  test(
+    'Creation limits protect rooms without breaking health checks',
+    () async {
+      await server.close();
+      server = RoomServer(creationLimit: 1, requestLimit: 3);
+      final running = await server.start(port: 0);
+      base = 'http://127.0.0.1:${running.port}';
+      expect((await post('/rooms', {'players': 2})).statusCode, 200);
+      final limited = await post('/rooms', {'players': 2});
+      expect(limited.statusCode, 429);
+      expect(limited.headers['retry-after'], '60');
+      expect(server.rooms.length, 1);
+      expect((await client.get(Uri.parse('$base/health'))).statusCode, 200);
+      await client.get(Uri.parse('$base/missing'));
+      expect((await client.get(Uri.parse('$base/missing'))).statusCode, 429);
+      expect((await client.get(Uri.parse('$base/health'))).statusCode, 200);
+    },
+  );
+
+  test('Oversized room requests cannot allocate rooms', () async {
+    final response = await client.post(
+      Uri.parse('$base/rooms'),
+      body: jsonEncode({'players': 2, 'padding': 'x' * 5000}),
+    );
+    expect(response.statusCode, 413);
+    expect(server.rooms, isEmpty);
+  });
 }

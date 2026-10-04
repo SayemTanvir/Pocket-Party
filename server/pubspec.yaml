@@ -1,0 +1,5 @@
+name: pocket_party_server
+description: Standalone Dart multiplayer room server for Pocket Party.
+publish_to: none
+environment:
+  sdk: '>=3.8.0 <4.0.0'

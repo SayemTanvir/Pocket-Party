@@ -134,6 +134,11 @@ class _RoomSetupPageState extends State<RoomSetupPage> {
                     padding: EdgeInsets.all(16),
                     child: Center(child: CircularProgressIndicator()),
                   ),
+                if (busy)
+                  const Text(
+                    'Connecting… A sleeping demo server may take about a minute to start.',
+                    textAlign: TextAlign.center,
+                  ),
                 if (error != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 16),

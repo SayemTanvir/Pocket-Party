@@ -65,6 +65,17 @@ class OnlineSession extends ChangeNotifier {
     }
     final client = http.Client();
     try {
+      // Wake a sleeping demo service with a read-only request first. Never
+      // retry room creation automatically: that could reserve duplicate seats.
+      final health = await client
+          .get(Uri.parse('$base/health'))
+          .timeout(const Duration(seconds: 75));
+      if (health.statusCode != 200) {
+        throw RoomException(
+          'The game server is starting or unavailable. Try again shortly.',
+          health.statusCode,
+        );
+      }
       final response = await client
           .post(
             Uri.parse('$base/rooms${players == null ? '/$joinCode/join' : ''}'),

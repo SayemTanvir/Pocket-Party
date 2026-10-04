@@ -40,7 +40,9 @@ Future<void> main(List<String> args) async {
           }),
         );
         if (reply.statusCode != 200) throw StateError(reply.body);
-        stdout.writeln('Verified phone move received and second-client reply accepted.');
+        stdout.writeln(
+          'Verified phone move received and second-client reply accepted.',
+        );
         return;
       }
       await Future<void>.delayed(const Duration(milliseconds: 250));

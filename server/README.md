@@ -15,4 +15,6 @@ Endpoints:
 
 Create/join returns a private session token. Authenticated endpoints require `Authorization: Bearer TOKEN`. Never share or log the token. Room codes can be shared with invited players.
 
-This is a local prototype: in-memory rooms, no account system, one-second client polling, permissive development CORS, and no distributed storage or production rate limiting. Use TLS and add operational protections before exposing this server publicly.
+The server can compile independently of Flutter using `dart compile exe main.dart` from this folder. It imports the same pure Dart game rules as the app.
+
+See [DEPLOYMENT.md](../DEPLOYMENT.md) for the Render demo deployment. This remains a prototype: in-memory rooms, no account system, one-second client polling, permissive development CORS, and basic request limits. Durable matches and distributed abuse controls are future work.
