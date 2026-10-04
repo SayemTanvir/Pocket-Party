@@ -214,6 +214,40 @@ void main() {
     },
   );
 
+  for (final type in ['darts', 'words', 'connect']) {
+    test('$type online match synchronizes results and rematches', () async {
+      final host = await OnlineSession.open(base, players: 2, gameType: type);
+      final guest = await OnlineSession.open(base, code: host.code);
+      try {
+        final room = server.rooms[host.code]!;
+        var count = 0;
+        while (!room.state.finished) {
+          final active = room.state.turn == 0 ? host : guest;
+          await active.refresh();
+          final move = type == 'connect'
+              ? ['0', '1', '0', '1', '0', '1', '0'][count]
+              : room.state.legalMoves.first;
+          await active.move(move);
+          expect(active.error, isNull);
+          count++;
+        }
+        await host.refresh();
+        await guest.refresh();
+        expect(host.state.toJson(), guest.state.toJson());
+        expect(host.state.finished, isTrue);
+        final record = host.series.toJson();
+        await host.restart();
+        await guest.refresh();
+        expect(guest.state.finished, isFalse);
+        expect(guest.series.toJson(), record);
+        expect(guest.gameType, type);
+      } finally {
+        host.dispose();
+        guest.dispose();
+      }
+    });
+  }
+
   test('Malformed and unknown room requests have useful errors', () async {
     expect((await post('/rooms', {'players': 8})).statusCode, 400);
     expect((await post('/rooms/ZZZZZZ/join', {})).statusCode, 404);

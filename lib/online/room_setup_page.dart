@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'online_session.dart';
 import '../games/match_widgets.dart';
+import '../games/game_catalog.dart';
 
 class RoomSetupPage extends StatefulWidget {
   const RoomSetupPage({
@@ -88,7 +89,7 @@ class _RoomSetupPageState extends State<RoomSetupPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  '${widget.gameType == 'chess' ? 'Chess' : 'Dots & Boxes'} room',
+                  '${gameInfo(widget.gameType).title} room',
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 12),
@@ -96,20 +97,25 @@ class _RoomSetupPageState extends State<RoomSetupPage> {
                   'Create a room and share its code. Everyone must connect to the same game server.',
                 ),
                 const SizedBox(height: 24),
-                TextField(
-                  controller: address,
-                  enabled: !busy,
-                  keyboardType: TextInputType.url,
-                  autocorrect: false,
-                  decoration: const InputDecoration(
-                    labelText: 'Game server address',
-                    border: OutlineInputBorder(),
-                    helperText:
-                        'Development server · or a hosted HTTPS address',
-                  ),
+                ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  title: const Text('Connection settings'),
+                  subtitle: const Text('Pocket Party online server'),
+                  children: [
+                    TextField(
+                      controller: address,
+                      enabled: !busy,
+                      keyboardType: TextInputType.url,
+                      autocorrect: false,
+                      decoration: const InputDecoration(
+                        labelText: 'Server address',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                 ),
-                const SizedBox(height: 24),
-                if (widget.gameType == 'dots')
+                const SizedBox(height: 20),
+                if (gameInfo(widget.gameType).maxPlayers > 2)
                   SegmentedButton<int>(
                     showSelectedIcon: false,
                     segments: [

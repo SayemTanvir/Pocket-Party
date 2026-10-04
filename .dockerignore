@@ -14,3 +14,7 @@
 
 !lib/games/chess_clock.dart
 !lib/games/match_series.dart
+
+!lib/games/arcade_rules.dart
+!lib/games/game_factory.dart
+!lib/games/word_dictionary.dart

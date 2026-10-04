@@ -8,6 +8,7 @@ import '../games/dots_game.dart';
 import '../games/chess_game.dart';
 import '../games/party_game.dart';
 import '../games/match_series.dart';
+import '../games/game_factory.dart';
 
 class OnlineSession extends ChangeNotifier {
   OnlineSession._(this.baseUrl, this.token, Map<String, dynamic> data) {
@@ -101,6 +102,16 @@ class OnlineSession extends ChangeNotifier {
           health.statusCode,
         );
       }
+      final available =
+          (jsonDecode(health.body) as Map<String, dynamic>)['games'] as List?;
+      if (players != null &&
+          available != null &&
+          !available.contains(gameType)) {
+        throw RoomException(
+          'This game is still deploying online. Try local play or connect again shortly.',
+          503,
+        );
+      }
       if (players != null && clockSeconds > 0) {
         final capabilities = jsonDecode(health.body) as Map<String, dynamic>;
         if (!(capabilities['features'] as List? ?? []).contains(
@@ -160,9 +171,7 @@ class OnlineSession extends ChangeNotifier {
       ..reset()
       ..start();
     round = data['round'] as int? ?? 1;
-    state = gameType == 'chess'
-        ? ChessGame.fromJson(snapshot)
-        : DotsGame.fromJson(snapshot);
+    state = restoreGame(gameType, snapshot);
     series = data['series'] == null
         ? MatchSeries(state.players)
         : MatchSeries.fromJson(data['series'] as Map<String, dynamic>);

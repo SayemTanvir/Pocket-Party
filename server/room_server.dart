@@ -14,6 +14,8 @@ import '../lib/games/party_game.dart';
 import '../lib/games/chess_clock.dart';
 // ignore: avoid_relative_lib_imports
 import '../lib/games/match_series.dart';
+// ignore: avoid_relative_lib_imports
+import '../lib/games/game_factory.dart';
 
 class ApiError implements Exception {
   ApiError(this.status, this.message);
@@ -23,7 +25,7 @@ class ApiError implements Exception {
 
 class Room {
   Room(this.code, int players, {this.gameType = 'dots', this.clockSeconds = 0})
-    : state = gameType == 'chess' ? ChessGame() : DotsGame(players: players),
+    : state = newGame(gameType, players: players),
       series = MatchSeries(players),
       clock = clockSeconds == 0 ? null : ChessClock(clockSeconds);
   final String code, gameType;
@@ -49,9 +51,7 @@ class Room {
   }
 
   void restart() {
-    state = gameType == 'chess'
-        ? ChessGame()
-        : DotsGame(players: state.players);
+    state = newGame(gameType, players: state.players);
     clock = clockSeconds == 0 ? null : (ChessClock(clockSeconds)..start());
     round++;
     recorded = false;
@@ -147,7 +147,7 @@ class RoomServer {
         response.write(
           jsonEncode({
             'status': 'ok',
-            'games': ['dots', 'chess'],
+            'games': gameTypes,
             'dotsBoardSize': 7,
             'features': ['chessClocks', 'matchSeries'],
           }),
@@ -189,11 +189,11 @@ class RoomServer {
           throw ApiError(400, 'Choose 2 to 4 players');
         }
         final gameType = body['gameType'] ?? 'dots';
-        if (!['dots', 'chess'].contains(gameType) ||
-            (gameType == 'chess' && players != 2)) {
+        if (!gameTypes.contains(gameType) ||
+            (['chess', 'connect'].contains(gameType) && players != 2)) {
           throw ApiError(
             400,
-            'Choose a supported game. Chess needs two players.',
+            'Choose a supported game. Chess and Connect Four need two players.',
           );
         }
         final seconds = body['clockSeconds'] ?? 0;

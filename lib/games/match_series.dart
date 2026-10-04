@@ -1,11 +1,19 @@
 import 'chess_game.dart';
 import 'dots_game.dart';
 import 'party_game.dart';
+import 'arcade_rules.dart';
+
+List<int>? gameScores(PartyGame game) => game is DotsGame
+    ? game.scores
+    : game is ScoredGame
+    ? game.scores
+    : null;
 
 int? matchWinner(PartyGame game) {
   if (!game.finished) return null;
   if (game is ChessGame) return game.winner;
-  final scores = (game as DotsGame).scores;
+  if (game is ConnectGame) return game.winner;
+  final scores = gameScores(game)!;
   var best = scores.first;
   for (final score in scores) {
     if (score > best) best = score;
@@ -26,12 +34,11 @@ class MatchSeries {
   void record(PartyGame game) {
     if (!game.finished) return;
     final winner = matchWinner(game);
-    final best = game is DotsGame
-        ? game.scores.reduce((a, b) => a > b ? a : b)
-        : null;
+    final scores = gameScores(game);
+    final best = scores?.reduce((a, b) => a > b ? a : b);
     for (var p = 0; p < wins.length; p++) {
       if (winner == null) {
-        if (game is DotsGame && game.scores[p] != best) {
+        if (scores != null && scores[p] != best) {
           losses[p]++;
         } else {
           draws[p]++;

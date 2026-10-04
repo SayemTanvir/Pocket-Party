@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import '../online/online_session.dart';
 import 'chess_game.dart';
 import 'chess_clock.dart';
+import 'game_catalog.dart';
 import 'match_series.dart';
 import 'match_widgets.dart';
 
@@ -25,6 +26,16 @@ class _ChessPageState extends State<ChessPage> {
   bool flipped = false;
   bool thinking = false;
   int generation = 0;
+  String cachedPosition = '';
+  List<String> cachedLegal = [], cachedNotation = [];
+  void cacheBoard() {
+    final signature = '${game.engine.fen}:${game.timeoutLoser}';
+    if (signature == cachedPosition) return;
+    cachedPosition = signature;
+    cachedLegal = game.legalMoves;
+    cachedNotation = game.notation;
+  }
+
   final MatchSeries localSeries = MatchSeries(2);
   MatchSeries get series => widget.online?.series ?? localSeries;
   ChessClock? clock;
@@ -99,7 +110,7 @@ class _ChessPageState extends State<ChessPage> {
         ? null
         : (ChessClock(widget.seconds)..start());
     if (clock != null || widget.online?.clock != null) {
-      ticker = Timer.periodic(const Duration(milliseconds: 100), (_) => tick());
+      ticker = Timer.periodic(const Duration(milliseconds: 250), (_) => tick());
     }
     checkResult();
   }
@@ -231,11 +242,17 @@ class _ChessPageState extends State<ChessPage> {
   };
   @override
   Widget build(BuildContext context) {
-    final legal = game.legalMoves;
+    cacheBoard();
+    final legal = cachedLegal;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Chess'),
         actions: [
+          IconButton(
+            tooltip: 'How to play',
+            onPressed: () => showGameRules(context, 'chess'),
+            icon: const Icon(Icons.help_outline_rounded),
+          ),
           IconButton(
             tooltip: 'Flip board',
             onPressed: () => setState(() => flipped = !flipped),
@@ -428,11 +445,11 @@ class _ChessPageState extends State<ChessPage> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    game.notation.isEmpty
+                    cachedNotation.isEmpty
                         ? 'Your moves will appear here'
                         : [
-                            for (var i = 0; i < game.notation.length; i += 2)
-                              '${i ~/ 2 + 1}. ${game.notation[i]}${i + 1 < game.notation.length ? ' ${game.notation[i + 1]}' : ''}',
+                            for (var i = 0; i < cachedNotation.length; i += 2)
+                              '${i ~/ 2 + 1}. ${cachedNotation[i]}${i + 1 < cachedNotation.length ? ' ${cachedNotation[i + 1]}' : ''}',
                           ].join('   '),
                     textAlign: TextAlign.center,
                   ),

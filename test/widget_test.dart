@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:pocket_party/main.dart';
 import 'package:pocket_party/games/chess_page.dart';
+import 'package:pocket_party/games/arcade_page.dart';
 import 'package:pocket_party/online/online_session.dart';
 
 import '../server/room_server.dart';
@@ -11,6 +12,17 @@ import '../server/room_server.dart';
 import '../lib/games/dots_game.dart';
 
 void main() {
+  testWidgets('Connect Four drops a disc and passes the turn', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: ArcadePage(type: 'connect')),
+    );
+    await tester.tap(find.byTooltip('Drop in column 1'));
+    await tester.pumpAndSettle();
+    expect(find.text('Player 2\u2019s turn'), findsOneWidget);
+    expect(find.text('1'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('A player can launch a local match', (tester) async {
     await tester.pumpWidget(const PartyApp());
     expect(find.text('Pocket Party'), findsOneWidget);
