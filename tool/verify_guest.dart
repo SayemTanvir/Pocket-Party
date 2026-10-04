@@ -8,9 +8,20 @@ import 'package:pocket_party/games/dots_game.dart';
 import 'package:pocket_party/games/dots_bot.dart';
 
 Future<void> main(List<String> args) async {
-  if (args.length != 1) throw ArgumentError('Pass the room code');
+  if (args.isEmpty || args.length > 2) {
+    throw ArgumentError('Pass the room code and optional server URL');
+  }
+  final base = Uri.parse(args.length == 2 ? args[1] : 'http://127.0.0.1:8787');
+  if (!['http', 'https'].contains(base.scheme) ||
+      base.host.isEmpty ||
+      base.userInfo.isNotEmpty ||
+      base.hasQuery ||
+      base.hasFragment ||
+      (base.path.isNotEmpty && base.path != '/')) {
+    throw ArgumentError('Use an HTTP or HTTPS server origin');
+  }
   final client = http.Client();
-  final room = Uri.parse('http://127.0.0.1:8787/rooms/${args.first}');
+  final room = base.resolve('/rooms/${args.first}');
   try {
     final joined = await client.post(
       Uri.parse('$room/join'),

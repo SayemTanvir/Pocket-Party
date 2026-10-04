@@ -13,7 +13,7 @@ class _RoomSetupPageState extends State<RoomSetupPage> {
   final address = TextEditingController(
     text: const String.fromEnvironment(
       'ROOM_SERVER',
-      defaultValue: 'http://127.0.0.1:8787',
+      defaultValue: 'https://pocket-party-rooms.onrender.com',
     ),
   );
   final code = TextEditingController();

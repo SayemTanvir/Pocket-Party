@@ -23,6 +23,10 @@ The bot completes available boxes and avoids giving boxes away when a safe move 
 
 ## Private multiplayer rooms
 
+The app now defaults to the live demo server at `https://pocket-party-rooms.onrender.com`. Players can create and join rooms over the internet without USB routing. Render's free service may take about a minute to wake after inactivity; rooms can disappear when it restarts.
+
+For local development instead:
+
 Start the room server in a separate terminal:
 
 ```powershell
@@ -37,7 +41,7 @@ For a phone connected by USB, route its local port to this computer:
 ..\.tools\android-sdk\platform-tools\adb.exe reverse tcp:8787 tcp:8787
 ```
 
-Use the default server address on the phone. A browser on the computer can join the same room as a second player. Each connected Android phone needs its own reverse mapping.
+Enter `http://127.0.0.1:8787` as the server address on the phone. A browser on the computer can join the same room as a second player. Each connected Android phone needs its own reverse mapping.
 
 For same-Wi-Fi testing instead, start the server with `$env:HOST = '0.0.0.0'` before running the helper, and use the computer's LAN address on each device. The Windows firewall and Wi-Fi network must permit that connection. The development APK permits HTTP; published builds should use a hosted HTTPS server.
 

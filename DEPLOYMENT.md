@@ -1,5 +1,7 @@
 # Put private multiplayer rooms online
 
+The current demo is live at `https://pocket-party-rooms.onrender.com`. Its health endpoint and a complete two-player match have been verified. The app defaults to this address; the steps below also apply to a replacement deployment.
+
 This deploys the Dart room server. The Flutter app connects to the resulting HTTPS address. GitHub stores your source; Render runs the server.
 
 ## Deploy the demo on Render
