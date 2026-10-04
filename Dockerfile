@@ -1,9 +1,9 @@
 FROM dart:3.13.4 AS build
 WORKDIR /app/server
-COPY server/pubspec.yaml ./
+COPY server/pubspec.yaml server/pubspec.lock ./
 RUN dart pub get
 COPY server/main.dart server/room_server.dart ./
-COPY lib/games/dots_game.dart /app/lib/games/dots_game.dart
+COPY lib/games/ /app/lib/games/
 RUN dart compile exe main.dart -o /app/room-server
 
 FROM scratch

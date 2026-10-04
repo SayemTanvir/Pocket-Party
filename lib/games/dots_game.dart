@@ -1,19 +1,25 @@
-class DotsGame {
+import 'party_game.dart';
+
+class DotsGame implements PartyGame {
   DotsGame({this.size = 4, this.players = 2})
     : scores = List.filled(players, 0);
 
   final int size;
+  @override
   final int players;
   final List<int> scores;
   final Set<String> edges = {};
   final Map<String, int> edgeOwners = {};
   final Map<String, int> boxes = {};
+  @override
   int turn = 0;
 
   String edge(bool horizontal, int row, int col) =>
       '${horizontal ? 'h' : 'v'}:$row:$col';
+  @override
   bool get finished => boxes.length == (size - 1) * (size - 1);
 
+  @override
   List<String> get legalMoves => [
     for (var r = 0; r < size; r++)
       for (var c = 0; c < size - 1; c++)
@@ -23,6 +29,7 @@ class DotsGame {
         if (!edges.contains(edge(false, r, c))) edge(false, r, c),
   ];
 
+  @override
   bool play(String move) {
     if (finished || !legalMoves.contains(move)) return false;
     edges.add(move);
@@ -56,6 +63,7 @@ class DotsGame {
     return result;
   }
 
+  @override
   Map<String, dynamic> toJson() => {
     'size': size,
     'players': players,

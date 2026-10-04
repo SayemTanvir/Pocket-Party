@@ -7,3 +7,7 @@
 !lib/
 !lib/games/
 !lib/games/dots_game.dart
+
+!server/pubspec.lock
+!lib/games/party_game.dart
+!lib/games/chess_game.dart

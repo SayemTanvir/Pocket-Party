@@ -3,7 +3,12 @@ import 'package:flutter/material.dart';
 import 'online_session.dart';
 
 class RoomSetupPage extends StatefulWidget {
-  const RoomSetupPage({super.key, required this.matchBuilder});
+  const RoomSetupPage({
+    super.key,
+    required this.matchBuilder,
+    this.gameType = 'dots',
+  });
+  final String gameType;
   final Widget Function(OnlineSession) matchBuilder;
   @override
   State<RoomSetupPage> createState() => _RoomSetupPageState();
@@ -36,6 +41,7 @@ class _RoomSetupPageState extends State<RoomSetupPage> {
       final session = await OnlineSession.open(
         address.text,
         players: create ? players : null,
+        gameType: widget.gameType,
         code: create ? null : code.text,
       );
       if (!mounted) {
@@ -71,7 +77,7 @@ class _RoomSetupPageState extends State<RoomSetupPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'Your own game room',
+                  '${widget.gameType == 'chess' ? 'Chess' : 'Dots & Boxes'} room',
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 12),
@@ -92,17 +98,18 @@ class _RoomSetupPageState extends State<RoomSetupPage> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                SegmentedButton<int>(
-                  showSelectedIcon: false,
-                  segments: [
-                    for (final n in [2, 3, 4])
-                      ButtonSegment(value: n, label: Text('$n players')),
-                  ],
-                  selected: {players},
-                  onSelectionChanged: busy
-                      ? null
-                      : (values) => setState(() => players = values.first),
-                ),
+                if (widget.gameType == 'dots')
+                  SegmentedButton<int>(
+                    showSelectedIcon: false,
+                    segments: [
+                      for (final n in [2, 3, 4])
+                        ButtonSegment(value: n, label: Text('$n players')),
+                    ],
+                    selected: {players},
+                    onSelectionChanged: busy
+                        ? null
+                        : (values) => setState(() => players = values.first),
+                  ),
                 const SizedBox(height: 16),
                 FilledButton.icon(
                   onPressed: busy ? null : () => open(true),

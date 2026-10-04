@@ -6,6 +6,10 @@ import 'dart:math';
 // The server compiles independently of Flutter and shares these pure Dart rules.
 // ignore: avoid_relative_lib_imports
 import '../lib/games/dots_game.dart';
+// ignore: avoid_relative_lib_imports
+import '../lib/games/chess_game.dart';
+// ignore: avoid_relative_lib_imports
+import '../lib/games/party_game.dart';
 
 class ApiError implements Exception {
   ApiError(this.status, this.message);
@@ -14,20 +18,24 @@ class ApiError implements Exception {
 }
 
 class Room {
-  Room(this.code, int players) : game = DotsGame(players: players);
+  Room(this.code, int players, {this.gameType = 'dots'})
+    : state = gameType == 'chess' ? ChessGame() : DotsGame(players: players);
   final String code;
-  DotsGame game;
+  final String gameType;
+  PartyGame state;
+  DotsGame get game => state as DotsGame;
   final List<String> tokens = [];
   int revision = 0;
   DateTime touched = DateTime.now();
-  bool get ready => tokens.length == game.players;
+  bool get ready => tokens.length == state.players;
   Map<String, dynamic> snapshot(int player) => {
     'code': code,
     'player': player,
     'joined': tokens.length,
     'ready': ready,
     'revision': revision,
-    'game': game.toJson(),
+    'gameType': gameType,
+    'game': state.toJson(),
   };
 }
 
@@ -101,7 +109,12 @@ class RoomServer {
         return;
       }
       if (request.method == 'GET' && request.uri.path == '/health') {
-        response.write(jsonEncode({'status': 'ok'}));
+        response.write(
+          jsonEncode({
+            'status': 'ok',
+            'games': ['dots', 'chess'],
+          }),
+        );
         return;
       }
       final source = request.connectionInfo?.remoteAddress.address ?? 'unknown';
@@ -138,6 +151,14 @@ class RoomServer {
         if (players is! int || players < 2 || players > 4) {
           throw ApiError(400, 'Choose 2 to 4 players');
         }
+        final gameType = body['gameType'] ?? 'dots';
+        if (!['dots', 'chess'].contains(gameType) ||
+            (gameType == 'chess' && players != 2)) {
+          throw ApiError(
+            400,
+            'Choose a supported game. Chess needs two players.',
+          );
+        }
         if (rooms.length >= 500) {
           throw ApiError(503, 'Server is full. Try later.');
         }
@@ -145,7 +166,7 @@ class RoomServer {
         while (rooms.containsKey(roomCode)) {
           roomCode = code();
         }
-        final room = Room(roomCode, players);
+        final room = Room(roomCode, players, gameType: gameType as String);
         final key = token();
         room.tokens.add(key);
         rooms[roomCode] = room;
@@ -181,11 +202,11 @@ class RoomServer {
             if (body['revision'] != room.revision) {
               throw ApiError(409, 'The board changed. Refresh and try again.');
             }
-            if (room.game.turn != player) {
+            if (room.state.turn != player) {
               throw ApiError(409, 'It is another player’s turn');
             }
             final move = body['move'];
-            if (move is! String || !room.game.play(move)) {
+            if (move is! String || !room.state.play(move)) {
               throw ApiError(400, 'That move is not legal');
             }
             room.revision++;
@@ -194,13 +215,15 @@ class RoomServer {
               parts.length == 3 &&
               parts[2] == 'restart') {
             if (player != 0) throw ApiError(403, 'Only the host can restart');
-            if (!room.game.finished) {
+            if (!room.state.finished) {
               throw ApiError(409, 'Finish this match before restarting');
             }
             if (body['revision'] != room.revision) {
               throw ApiError(409, 'The board changed');
             }
-            room.game = DotsGame(players: room.game.players);
+            room.state = room.gameType == 'chess'
+                ? ChessGame()
+                : DotsGame(players: room.state.players);
             room.revision++;
             result = room.snapshot(player);
           } else {

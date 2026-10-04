@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'games/dots_game.dart';
+import 'games/chess_page.dart';
 import 'games/dots_bot.dart';
 import 'online/online_session.dart';
 import 'online/room_setup_page.dart';
@@ -46,6 +47,10 @@ class Lobby extends StatefulWidget {
 class _LobbyState extends State<Lobby> {
   int players = 2;
   bool bot = false;
+  bool chessBot = false;
+  Widget onlineMatch(OnlineSession session) => session.gameType == 'chess'
+      ? ChessPage(online: session)
+      : MatchPage(players: session.game.players, bot: false, online: session);
   @override
   Widget build(BuildContext context) => Scaffold(
     body: SafeArea(
@@ -133,13 +138,57 @@ class _LobbyState extends State<Lobby> {
                             label: const Text('Play with friends'),
                             onPressed: () => Navigator.of(context).push(
                               MaterialPageRoute<void>(
-                                builder: (_) => RoomSetupPage(
-                                  matchBuilder: (session) => MatchPage(
-                                    players: session.game.players,
-                                    bot: false,
-                                    online: session,
-                                  ),
-                                ),
+                                builder: (_) =>
+                                    RoomSetupPage(matchBuilder: onlineMatch),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'Chess',
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'A classic battle of strategy. Two players, one king to protect.',
+                        ),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Play against a chess bot'),
+                          subtitle: const Text('Beginner difficulty'),
+                          value: chessBot,
+                          onChanged: (value) =>
+                              setState(() => chessBot = value),
+                        ),
+                        FilledButton.icon(
+                          icon: const Icon(Icons.play_arrow),
+                          label: const Text('Start chess'),
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => ChessPage(bot: chessBot),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.public),
+                          label: const Text('Chess with friends'),
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => RoomSetupPage(
+                                gameType: 'chess',
+                                matchBuilder: onlineMatch,
                               ),
                             ),
                           ),

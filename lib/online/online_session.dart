@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../games/dots_game.dart';
+import '../games/chess_game.dart';
+import '../games/party_game.dart';
 
 class OnlineSession extends ChangeNotifier {
   OnlineSession._(this.baseUrl, this.token, Map<String, dynamic> data) {
@@ -16,7 +18,10 @@ class OnlineSession extends ChangeNotifier {
   final http.Client _client = http.Client();
   late String code;
   late int player;
-  late DotsGame game;
+  late PartyGame state;
+  late String gameType;
+  DotsGame get game => state as DotsGame;
+  ChessGame get chessGame => state as ChessGame;
   int joined = 1;
   int revision = -1;
   bool ready = false;
@@ -33,8 +38,8 @@ class OnlineSession extends ChangeNotifier {
       connected &&
       !busy &&
       !expired &&
-      !game.finished &&
-      game.turn == player;
+      !state.finished &&
+      state.turn == player;
 
   static String normalizeUrl(String value) {
     final uri = Uri.tryParse(value.trim());
@@ -55,6 +60,7 @@ class OnlineSession extends ChangeNotifier {
   static Future<OnlineSession> open(
     String address, {
     int? players,
+    String gameType = 'dots',
     String? code,
   }) async {
     final base = normalizeUrl(address);
@@ -80,7 +86,9 @@ class OnlineSession extends ChangeNotifier {
           .post(
             Uri.parse('$base/rooms${players == null ? '/$joinCode/join' : ''}'),
             headers: {'Content-Type': 'application/json'},
-            body: jsonEncode(players == null ? {} : {'players': players}),
+            body: jsonEncode(
+              players == null ? {} : {'players': players, 'gameType': gameType},
+            ),
           )
           .timeout(const Duration(seconds: 8));
       final data = _decode(response);
@@ -109,7 +117,11 @@ class OnlineSession extends ChangeNotifier {
     joined = data['joined'] as int;
     ready = data['ready'] as bool;
     revision = next;
-    game = DotsGame.fromJson(data['game'] as Map<String, dynamic>);
+    gameType = data['gameType'] as String? ?? 'dots';
+    final snapshot = data['game'] as Map<String, dynamic>;
+    state = gameType == 'chess'
+        ? ChessGame.fromJson(snapshot)
+        : DotsGame.fromJson(snapshot);
   }
 
   Future<void> refresh() async {

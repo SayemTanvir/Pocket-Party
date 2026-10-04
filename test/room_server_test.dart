@@ -131,6 +131,36 @@ void main() {
     },
   );
 
+  test('Chess rooms synchronize checkmate and host rematch', () async {
+    final host = await OnlineSession.open(base, players: 2, gameType: 'chess');
+    final guest = await OnlineSession.open(base, code: host.code);
+    try {
+      expect(guest.gameType, 'chess');
+      for (final move in ['f2f3', 'e7e5', 'g2g4', 'd8h4']) {
+        await host.refresh();
+        await guest.refresh();
+        final player = host.chessGame.turn == 0 ? host : guest;
+        await player.move(move);
+        expect(player.error, isNull);
+      }
+      await host.refresh();
+      await guest.refresh();
+      expect(host.chessGame.finished, isTrue);
+      expect(host.chessGame.toJson(), guest.chessGame.toJson());
+      await host.restart();
+      await guest.refresh();
+      expect(guest.chessGame.history, isEmpty);
+      expect(guest.chessGame.turn, 0);
+      expect(
+        (await post('/rooms', {'players': 3, 'gameType': 'chess'})).statusCode,
+        400,
+      );
+    } finally {
+      host.dispose();
+      guest.dispose();
+    }
+  });
+
   test('Malformed and unknown room requests have useful errors', () async {
     expect((await post('/rooms', {'players': 8})).statusCode, 400);
     expect((await post('/rooms/ZZZZZZ/join', {})).statusCode, 404);

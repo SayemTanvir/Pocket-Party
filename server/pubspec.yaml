@@ -3,3 +3,5 @@ description: Standalone Dart multiplayer room server for Pocket Party.
 publish_to: none
 environment:
   sdk: '>=3.8.0 <4.0.0'
+dependencies:
+  chess: ^0.8.1

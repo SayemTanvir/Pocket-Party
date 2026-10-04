@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:pocket_party/main.dart';
+import 'package:pocket_party/games/chess_page.dart';
 import 'package:pocket_party/online/online_session.dart';
 
 import '../server/room_server.dart';
@@ -21,6 +22,21 @@ void main() {
     expect(find.text('Player 2’s turn'), findsOneWidget);
     semantics.dispose();
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Chess board selects a pawn and makes a legal move', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: ChessPage()));
+    final semantics = tester.ensureSemantics();
+    await tester.tap(find.bySemanticsLabel('e2 white pawn'));
+    await tester.pump();
+    await tester.tap(find.bySemanticsLabel('e4 empty'));
+    await tester.pump();
+    expect(find.text('Black to move'), findsOneWidget);
+    expect(find.text('1. e4'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    semantics.dispose();
   });
 
   testWidgets('Waiting board accepts a move after another player joins', (

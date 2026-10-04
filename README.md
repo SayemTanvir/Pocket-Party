@@ -2,8 +2,13 @@
 
 A cross-platform Flutter collection of small multiplayer games.
 
-First playable game: Dots and Boxes, with local 2–4 player matches, a tactical two-player bot, and private network rooms.
+Two playable games:
+
+- Dots and Boxes: local 2–4 players, a tactical two-player bot, and private online rooms.
+- Chess: local two-player matches, a beginner bot, and private online rooms. Includes legal move highlights, castling, en passant, promotion, checkmate, draws, move history, and board flipping.
 
 See [GETTING_STARTED.md](GETTING_STARTED.md) for run commands, code explanations, and Android setup.
 
 Private rooms default to the hosted demo server at `https://pocket-party-rooms.onrender.com`. The included development server can also be used locally. Durable matches and additional games are future milestones.
+
+For chess, White is the host and Black is the guest. Tap a piece and then a highlighted destination. The bot plays Black and searches two moves ahead; it is intended for beginner practice. Completed online matches can be restarted by the host. Joining a room automatically opens its game, regardless of which game card you used.
