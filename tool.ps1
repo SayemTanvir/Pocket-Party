@@ -1,5 +1,5 @@
 param(
-  [ValidateSet('doctor', 'devices', 'test', 'analyze', 'web', 'apk', 'run', 'server')]
+  [ValidateSet('doctor', 'devices', 'test', 'analyze', 'web', 'apk', 'run', 'server', 'itch')]
   [string]$Task = 'doctor',
   [string]$Device,
   [string]$ServerUrl
@@ -24,6 +24,18 @@ if ($ServerUrl) {
 Push-Location $PSScriptRoot
 try {
   switch ($Task) {
+    'itch' {
+      if (-not $ServerUrl) {
+        $defines = @('--dart-define=ROOM_SERVER=https://pocket-party-rooms.onrender.com')
+      }
+      & python tool/prepare_signing.py
+      if ($LASTEXITCODE -ne 0) { throw 'Signing setup failed' }
+      & $flutter build web --release --no-web-resources-cdn @defines
+      if ($LASTEXITCODE -ne 0) { throw 'Web build failed' }
+      & $flutter build apk --release @defines
+      if ($LASTEXITCODE -ne 0) { throw 'Android release build failed' }
+      & python tool/package_itch.py
+    }
     'server' { & (Join-Path $workspace '.tools\flutter\bin\dart.bat') server/main.dart }
     'web' { & $flutter run -d chrome @defines }
     'apk' { & $flutter build apk --debug @defines }
